@@ -1,0 +1,23 @@
+# Backend Dependencies
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.6
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# Database
+sqlalchemy>=2.0.0
+
+# Vector Store
+chromadb>=0.4.22
+
+# PDF Processing
+pdfplumber>=0.10.0
+pymupdf>=1.23.0
+
+# LLM
+openai>=1.10.0
+
+# Utilities
+python-dotenv>=1.0.0
+httpx>=0.26.0

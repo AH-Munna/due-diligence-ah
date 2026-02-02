@@ -1,0 +1,79 @@
+{
+  "sections": [
+    {
+      "name": "General Partner Information",
+      "questions": [
+        {
+          "id": "gp_1",
+          "text": "What is the name of the General Partner and its principal place of business?",
+          "type": "factual"
+        },
+        {
+          "id": "gp_2",
+          "text": "Describe the ownership structure and key personnel of the General Partner.",
+          "type": "analytical"
+        }
+      ]
+    },
+    {
+      "name": "Financial Information",
+      "questions": [
+        {
+          "id": "fin_1",
+          "text": "What was the total revenue for the most recent fiscal year?",
+          "type": "factual"
+        },
+        {
+          "id": "fin_2",
+          "text": "Describe the key financial risks disclosed in the offering documents.",
+          "type": "analytical"
+        },
+        {
+          "id": "fin_3",
+          "text": "What are the auditor's opinions on the consolidated financial statements?",
+          "type": "factual"
+        }
+      ]
+    },
+    {
+      "name": "Investment Strategy",
+      "questions": [
+        {
+          "id": "inv_1",
+          "text": "What is the primary investment strategy and target sectors?",
+          "type": "analytical"
+        },
+        {
+          "id": "inv_2",
+          "text": "What is the geographic focus of investments?",
+          "type": "factual"
+        }
+      ]
+    },
+    {
+      "name": "Risk Factors",
+      "questions": [
+        {
+          "id": "risk_1",
+          "text": "What are the key risk factors identified in the prospectus?",
+          "type": "analytical"
+        },
+        {
+          "id": "risk_2",
+          "text": "Are there any pending legal proceedings or regulatory issues?",
+          "type": "factual"
+        }
+      ]
+    },
+    {
+      "name": "Market & Industry",
+      "questions": [
+        {
+          "id": "mkt_1",
+          "text": "What is the current market size and projected growth for the target industry?",
+          "type": "analytical"
+        }
+      ]
+    }
+  ]
+}
