@@ -22,6 +22,7 @@ export interface Citation {
   page: number;
   text: string;
   chunk_id: string;
+  num?: number;
 }
 
 export interface Answer {

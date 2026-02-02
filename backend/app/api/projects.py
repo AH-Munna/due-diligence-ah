@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 import uuid
 
@@ -133,3 +134,35 @@ async def generate_all_answers(project_id: str, db: Session = Depends(get_db)):
     db.commit()
     
     return result
+
+
+@router.get("/{project_id}/generate-stream")
+async def generate_answers_stream(project_id: str, db: Session = Depends(get_db)):
+    """
+    Generate answers with SSE streaming for real-time progress.
+    Returns Server-Sent Events with progress updates.
+    """
+    from app.services.answer import generate_answers_for_project_with_progress
+    
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    async def event_generator():
+        async for progress in generate_answers_for_project_with_progress(project, db):
+            yield f"data: {json.dumps(progress)}\n\n"
+        
+        # Update project status at the end
+        project.status = ProjectStatus.READY.value
+        db.commit()
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
+

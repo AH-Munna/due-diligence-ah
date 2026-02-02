@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     # NVIDIA NIM API
     nvidia_api_key: str = ""
     nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
-    llm_model: str = "z-ai/glm4.7"  # or moonshotai/kimi-k2.5, deepseek-ai/deepseek-r1
+    llm_model: str = "z-ai/glm4.7"  # or moonshotai/kimi-k2.5, deepseek-ai/deepseek-v3.2
     
     # Answer Generation
     answer_temp_a: float = 0.7  # First parallel call

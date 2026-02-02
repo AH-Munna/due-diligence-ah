@@ -3,14 +3,33 @@
 import {
     deleteProject,
     fetchProject,
-    generateAllAnswers,
     Project,
     Question,
-    updateAnswer
+    updateAnswer,
 } from "@/lib/api";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+interface ProgressState {
+    isGenerating: boolean;
+    currentQuestion: number;
+    totalQuestions: number;
+    stage: string;
+    questionPreview: string;
+}
+
+const STAGE_LABELS: Record<string, string> = {
+    starting: "Starting...",
+    retrieving_context: "Retrieving context...",
+    parallel_generation: "Running parallel LLM calls...",
+    merging: "Merging answers...",
+    complete: "Done!",
+    cached: "Using cached answer",
+};
 
 function StatusBadge({ status }: { status: string }) {
     const styles: Record<string, string> = {
@@ -97,7 +116,7 @@ function QuestionCard({ question, onRefresh }: QuestionCardProps) {
                         </div>
                     ) : (
                         <>
-                            {/* AI Answer */}
+                            {/* AI Answer with Markdown */}
                             <div className="mb-4">
                                 <div className="flex items-center justify-between mb-2">
                                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -108,11 +127,7 @@ function QuestionCard({ question, onRefresh }: QuestionCardProps) {
                                     )}
                                 </div>
                                 <div className="prose prose-sm dark:prose-invert max-w-none bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                                    {answer.ai_answer.split("\n").map((line, i) => (
-                                        <p key={i} className="mb-2 last:mb-0">
-                                            {line}
-                                        </p>
-                                    ))}
+                                    <ReactMarkdown>{answer.ai_answer}</ReactMarkdown>
                                 </div>
                             </div>
 
@@ -123,7 +138,7 @@ function QuestionCard({ question, onRefresh }: QuestionCardProps) {
                                         Manual Answer
                                     </span>
                                     <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 border border-yellow-200 dark:border-yellow-800">
-                                        {answer.manual_answer}
+                                        <ReactMarkdown>{answer.manual_answer}</ReactMarkdown>
                                     </div>
                                 </div>
                             )}
@@ -146,7 +161,7 @@ function QuestionCard({ question, onRefresh }: QuestionCardProps) {
                                                     className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800 text-sm"
                                                 >
                                                     <div className="font-medium text-blue-800 dark:text-blue-200 mb-1">
-                                                        📄 {citation.doc_name} - Page {citation.page}
+                                                        [{citation.num || i + 1}] 📄 {citation.doc_name} - Page {citation.page}
                                                     </div>
                                                     <div className="text-gray-600 dark:text-gray-400 text-xs">
                                                         {citation.text}
@@ -212,8 +227,16 @@ export default function ProjectDetailPage({
     const router = useRouter();
     const [project, setProject] = useState<Project | null>(null);
     const [loading, setLoading] = useState(true);
-    const [generating, setGenerating] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Progress tracking
+    const [progress, setProgress] = useState<ProgressState>({
+        isGenerating: false,
+        currentQuestion: 0,
+        totalQuestions: 0,
+        stage: "",
+        questionPreview: "",
+    });
 
     const loadProject = async () => {
         try {
@@ -232,18 +255,54 @@ export default function ProjectDetailPage({
 
     const handleGenerateAll = async () => {
         if (!project) return;
-        setGenerating(true);
+
+        setProgress({
+            isGenerating: true,
+            currentQuestion: 0,
+            totalQuestions: project.questions.length,
+            stage: "starting",
+            questionPreview: "",
+        });
         setError(null);
+
         try {
-            const result = await generateAllAnswers(project.id);
-            if (result.errors.length > 0) {
-                setError(`Generated ${result.generated}/${result.total}, ${result.errors.length} errors`);
-            }
-            await loadProject();
+            // Use SSE for real-time progress
+            const eventSource = new EventSource(
+                `${API_BASE}/api/projects/${project.id}/generate-stream`
+            );
+
+            eventSource.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+
+                if (data.type === "progress") {
+                    setProgress({
+                        isGenerating: true,
+                        currentQuestion: data.question_num,
+                        totalQuestions: data.total,
+                        stage: data.stage,
+                        questionPreview: data.question_preview,
+                    });
+                } else if (data.type === "error") {
+                    setError(`Error on question ${data.question_num}: ${data.error}`);
+                } else if (data.type === "complete") {
+                    eventSource.close();
+                    setProgress(prev => ({ ...prev, isGenerating: false }));
+                    if (data.errors.length > 0) {
+                        setError(`Completed with ${data.errors.length} errors`);
+                    }
+                    loadProject();
+                }
+            };
+
+            eventSource.onerror = () => {
+                eventSource.close();
+                setProgress(prev => ({ ...prev, isGenerating: false }));
+                loadProject();
+            };
+
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to generate answers");
-        } finally {
-            setGenerating(false);
+            setProgress(prev => ({ ...prev, isGenerating: false }));
         }
     };
 
@@ -315,10 +374,10 @@ export default function ProjectDetailPage({
                         <div className="flex gap-2">
                             <button
                                 onClick={handleGenerateAll}
-                                disabled={generating}
+                                disabled={progress.isGenerating}
                                 className="btn-primary"
                             >
-                                {generating ? (
+                                {progress.isGenerating ? (
                                     <>
                                         <span className="animate-spin mr-2">⏳</span>
                                         Generating...
@@ -342,9 +401,33 @@ export default function ProjectDetailPage({
                     </div>
                 )}
 
-                {generating && (
-                    <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-blue-700 dark:text-blue-300">
-                        ⏳ Generating answers using AI. This may take a few minutes...
+                {/* Progress Card */}
+                {progress.isGenerating && (
+                    <div className="mb-6 card p-6 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                        <div className="flex items-center gap-4">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                            <div className="flex-1">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="font-medium text-blue-800 dark:text-blue-200">
+                                        Question {progress.currentQuestion} of {progress.totalQuestions}
+                                    </span>
+                                    <span className="text-sm text-blue-600 dark:text-blue-400">
+                                        {STAGE_LABELS[progress.stage] || progress.stage}
+                                    </span>
+                                </div>
+                                <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2">
+                                    <div
+                                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                                        style={{
+                                            width: `${(progress.currentQuestion / progress.totalQuestions) * 100}%`,
+                                        }}
+                                    ></div>
+                                </div>
+                                <p className="text-sm text-blue-600 dark:text-blue-400 mt-2 truncate">
+                                    {progress.questionPreview}
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 )}
 

@@ -30,3 +30,10 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Data files
+backend/uploads/
+backend/chroma_db/
+backend/due_diligence.db
+*.db
+*.pickle
