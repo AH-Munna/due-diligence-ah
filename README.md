@@ -211,7 +211,7 @@ due-diligence-ah/
 
 ---
 
-## 👤 About the Developer
+## 👤 About Me
 
 **Ahsanul Haque Munna**  
 Fullstack Developer | AI/LLM Enthusiast
@@ -243,4 +243,5 @@ Fullstack Developer | AI/LLM Enthusiast
 
 ## 📝 License
 
+Open Source
 MIT License - Built as a technical demonstration project.
